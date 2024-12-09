@@ -1,0 +1,55 @@
+// 全局变量，用于记录首次尝试连接WiFi的时间戳
+unsigned long firstConnectAttemptTime = 0;
+// 全局变量，用于记录每次连接尝试开始的时间戳
+unsigned long currentConnectAttemptStartTime = 0;
+// 全局变量，用于记录总的连接耗时（累计每次连接尝试的时间间隔）
+unsigned long totalConnectionTimeElapsed = 0;
+
+// WiFi连接失败时的回调处理函数（可根据实际需求进一步扩展功能）
+void wifiConnectFailedCallback() {
+    Serial.println("WiFi连接失败，执行错误处理...");
+
+    // 如果是首次连接尝试失败，记录首次尝试连接的时间戳
+    if (wifiConnectAttempts == 1) {
+        firstConnectAttemptTime = millis();
+    }
+
+    // 记录本次连接尝试开始的时间戳
+    currentConnectAttemptStartTime = millis();
+
+    // 增加总的重连尝试次数
+    totalReconnectAttempts++;
+    // 增加本次连接尝试次数
+    wifiConnectAttempts++;
+
+    // 判断是否达到多次尝试连接失败的阈值，如果是则考虑重新配置WiFi
+    if (wifiConnectAttempts >= 10) {
+        isReconfiguring = true;
+        reconfigureWiFi();
+
+        // 计算总的连接耗时（累计每次连接尝试的时间间隔）
+        totalConnectionTimeElapsed += millis() - firstConnectAttemptTime;
+
+        // 在串口输出总的连接耗时信息，方便查看
+        Serial.print("总的连接耗时: ");
+        Serial.print(totalConnectionTimeElapsed);
+        Serial.println(" 毫秒");
+
+        // 可以在这里添加更多针对连接失败及总耗时情况的处理逻辑，比如记录日志、向外部设备发送通知等
+
+    } else {
+        // 计算本次连接尝试耗时，并在串口输出，便于了解每次连接情况
+        unsigned long currentConnectAttemptTimeElapsed = millis() - currentConnectAttemptStartTime;
+        Serial.print("本次连接尝试耗时: ");
+        Serial.print(currentConnectAttemptTimeElapsed);
+        Serial.println(" 毫秒");
+
+        // 可以在这里根据本次连接耗时情况，调整下一次连接尝试的等待时间等策略，例如：
+        // 如果本次耗时较短，适当延长下一次尝试连接前的等待时间，避免过于频繁的无效尝试
+        if (currentConnectAttemptTimeElapsed < 5000) {
+            delay(10000);  // 等待10秒后再进行下一次连接尝试，可根据实际情况调整等待时长
+        } else {
+            delay(5000);  // 等待5秒后再进行下一次连接尝试，可根据实际情况调整等待时长
+        }
+    }
+}
